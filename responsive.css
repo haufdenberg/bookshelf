@@ -1,0 +1,53 @@
+/* ==========================================================================
+   Mobile / iOS responsive overrides (<=700px)
+   Turns the left sidebar into a bottom tab bar, stacks grids to single
+   column, and makes modals behave like bottom sheets.
+   Load this file LAST so it can override the desktop rules above.
+   ========================================================================== */
+
+@media(max-width:700px){
+  #sidebar{
+    position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:56px;
+    flex-direction:row;border-top:1px solid rgba(255,255,255,0.1);
+    padding-bottom:env(safe-area-inset-bottom);z-index:200;overflow:visible;
+  }
+  .sidebar-logo{display:none}
+  #profile-bar{display:none!important}
+  nav{display:flex;flex-direction:row;flex:1;padding:0;overflow:visible}
+  .nav-section{display:none}
+  .nav-item{
+    flex:1;flex-direction:column;align-items:center;justify-content:center;
+    padding:6px 2px 4px;gap:3px;font-size:9px;border-left:none;border-top:2px solid transparent;
+    letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .nav-item.active{background:rgba(168,67,50,0.2);border-top-color:var(--rust-mid);border-left:none}
+  .nav-item svg{width:20px;height:20px}
+  .sidebar-stats{display:none}
+
+  #main{margin-left:0;padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+  .topbar{padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top))}
+  .topbar-title{font-size:15px}
+  .content{padding:14px}
+
+  .dash-stats{grid-template-columns:1fr 1fr;gap:8px}
+  .dash-grid{grid-template-columns:1fr}
+  .book-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+
+  .modal{max-height:92vh;max-width:100vw;border-radius:var(--radius-lg) var(--radius-lg) 0 0;margin-top:auto;width:100%!important}
+  .modal-overlay{align-items:flex-end}
+  .modal-header{padding:16px 16px 12px}
+  .modal-body{padding:14px 16px}
+  .modal-footer{padding:10px 16px}
+  .modal-grid{grid-template-columns:1fr 1fr}
+
+  .form-row,.form-row-3{grid-template-columns:1fr}
+  .filters-bar{gap:5px}
+  .filter-select{font-size:11px;padding:6px 20px 6px 7px}
+  .lib-search-bar{min-width:100px}
+  #sidebar-quick-switch{flex-wrap:nowrap;overflow-x:auto;gap:4px;padding:2px 0}
+  .update-card{padding:10px}
+  .wish-card-actions{flex-direction:row;flex-wrap:wrap}
+  .form-tabs{overflow-x:auto;flex-wrap:nowrap}
+  .form-tab{white-space:nowrap;padding:8px 10px;font-size:12px}
+  .btn{padding:7px 12px;font-size:12px}
+}

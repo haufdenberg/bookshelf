@@ -1,0 +1,96 @@
+/* ==========================================================================
+   App shell: sidebar (desktop) / bottom nav (mobile), topbar, buttons,
+   and the .view container that dashboard/library/wishlist/etc. swap into
+   ========================================================================== */
+
+/* --- Sidebar / primary nav --- */
+#sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:224px;
+  background:#1C1A17;display:flex;flex-direction:column;
+  z-index:100;overflow:hidden;
+}
+.sidebar-logo{padding:22px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sidebar-logo h1{font-family:'Lora',serif;font-size:22px;font-weight:600;color:#F7F3ED}
+.sidebar-logo span{color:var(--rust-mid)}
+.sidebar-subtitle{font-size:11px;color:rgba(247,243,237,0.35);margin-top:2px;letter-spacing:0.5px;text-transform:uppercase}
+
+nav{padding:10px 0;flex:1;overflow-y:auto}
+.nav-section{padding:10px 20px 4px;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(247,243,237,0.28)}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;
+  font-size:14px;color:rgba(247,243,237,0.6);transition:all 0.15s;
+  border-left:2px solid transparent;text-decoration:none;
+}
+.nav-item:hover{color:#F7F3ED;background:rgba(255,255,255,0.05)}
+.nav-item.active{color:#F7F3ED;background:rgba(168,67,50,0.2);border-left-color:var(--rust-mid)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+
+.sidebar-stats{padding:12px 20px;border-top:1px solid rgba(255,255,255,0.08)}
+.sidebar-stat{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:rgba(247,243,237,0.4);padding:2px 0}
+.sidebar-stat strong{color:rgba(247,243,237,0.75);font-weight:500}
+
+/* --- Main column / topbar --- */
+#main{margin-left:224px;flex:1;display:flex;flex-direction:column}
+
+.topbar{
+  background:var(--cream);border-bottom:1px solid var(--border);
+  padding:11px 26px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-title{font-family:'Lora',serif;font-size:18px;font-weight:600;flex:1}
+
+/* --- Buttons (shared across the whole app) --- */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:8px;
+  cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif;font-weight:500;
+  border:none;transition:all 0.15s;text-decoration:none;white-space:nowrap;
+}
+.btn-primary{background:var(--rust);color:white}
+.btn-primary:hover{background:var(--rust-mid)}
+.btn-secondary{background:var(--surface);color:var(--ink);border:1px solid var(--border-strong)}
+.btn-secondary:hover{background:var(--cream-dark)}
+.btn-danger{background:#FEE2E2;color:#991B1B;border:none}
+.btn-danger:hover{background:#FECACA}
+.btn svg{width:14px;height:14px}
+
+.content{padding:22px 26px;flex:1}
+
+/* --- View switcher (dashboard / library / wishlist / updates / settings) --- */
+.view{display:none}
+.view.active{display:block}
+
+/* --- Account menu (top-right avatar + dropdown) --- */
+.account-menu-wrap{position:relative;flex-shrink:0}
+.account-avatar{
+  width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border-strong);
+  background:var(--rust);color:#fff;font-weight:600;font-size:14px;cursor:pointer;
+  font-family:DM Sans,sans-serif;display:flex;align-items:center;justify-content:center;
+}
+.account-avatar:hover{filter:brightness(1.08)}
+.account-dropdown{
+  display:none;position:absolute;right:0;top:42px;min-width:230px;z-index:300;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  box-shadow:var(--shadow-hover);padding:6px;
+}
+.account-dropdown.open{display:block}
+.am-head{padding:8px 10px 10px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.am-email{font-size:13px;font-weight:600;word-break:break-all}
+.am-sub{font-size:11px;color:var(--ink-faint);margin-top:2px}
+.am-item{
+  display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;
+  padding:9px 10px;border-radius:8px;font-size:13px;color:var(--ink);font-family:DM Sans,sans-serif;
+}
+.am-item:hover{background:var(--cream-dark)}
+.am-danger{color:var(--rust)}
+.am-sep{height:1px;background:var(--border);margin:4px 0}
+
+/* --- Settings tabs --- */
+.settings-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);overflow-x:auto}
+.settings-tab{
+  background:none;border:none;cursor:pointer;padding:9px 14px;font-size:13px;font-weight:500;
+  color:var(--ink-muted);border-bottom:2px solid transparent;margin-bottom:-1px;
+  font-family:DM Sans,sans-serif;white-space:nowrap;
+}
+.settings-tab:hover{color:var(--ink)}
+.settings-tab.active{color:var(--rust);border-bottom-color:var(--rust)}
+.settings-section.tab-hidden{display:none !important}

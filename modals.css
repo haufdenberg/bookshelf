@@ -1,0 +1,51 @@
+/* ==========================================================================
+   Modals: #detail-modal (view a book) and #form-modal (add/edit a book)
+   Shell/chrome only — see forms.css for the actual input styling inside
+   #form-modal.
+   ========================================================================== */
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(28,26,23,0.55);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+
+.modal{
+  background:var(--cream);border-radius:var(--radius-lg);width:700px;max-width:96vw;
+  max-height:93vh;overflow-y:auto;box-shadow:0 24px 60px rgba(28,26,23,0.28);
+  transform:translateY(12px);transition:transform 0.25s;
+}
+.modal-overlay.open .modal{transform:translateY(0)}
+
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:16px}
+
+.modal-cover{
+  width:78px;height:116px;border-radius:7px;background:var(--cream-dark);
+  display:flex;align-items:center;justify-content:center;font-size:36px;
+  flex-shrink:0;border:1px solid var(--border);overflow:hidden;position:relative;
+}
+.modal-cover img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;z-index:1}
+.modal-cover-spine{position:absolute;left:0;top:0;bottom:0;width:9px;border-radius:5px 0 0 5px;z-index:2}
+
+.modal-title{font-family:'Lora',serif;font-size:18px;font-weight:600;line-height:1.2;margin-bottom:4px}
+.modal-author{font-size:13px;color:var(--ink-muted);margin-bottom:9px}
+.modal-tags{display:flex;gap:5px;flex-wrap:wrap}
+
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;background:var(--rust-light);color:var(--rust)}
+.tag.genre-tag{background:var(--sage-light);color:var(--sage)}
+.tag.read-tag{background:var(--gold-light);color:var(--gold)}
+
+.modal-body{padding:20px 24px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-bottom:18px}
+
+.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-faint);margin-bottom:3px}
+.meta-value{font-size:13px;color:var(--ink);font-weight:500}
+.meta-value.muted{font-weight:400;color:var(--ink-muted)}
+
+.desc-label{font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-faint);margin-bottom:6px}
+.desc-text{font-size:13px;color:var(--ink-muted);line-height:1.7;font-family:'Lora',serif;font-style:italic}
+
+.subject-chip{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;background:var(--cream-dark);color:var(--ink-muted);margin:2px 2px 2px 0}
+
+.modal-footer{padding:13px 24px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
