@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bookshelf">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1C1A17">
+<!-- Applies saved light/dark theme before first paint (no flash) -->
+<script src="js/theme.js"></script>
+<meta name="description" content="Your personal library manager — track books, series, wishlist and more.">
+<!-- Note: no static <link rel="manifest"> here — js/pwa.js generates and injects
+     a working manifest as a blob URL at runtime (only when served over http(s),
+     since manifests/service workers don't apply to file:// pages anyway). -->
+<!-- Inline SVG icon as apple-touch-icon (fallback) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231C1A17'/%3E%3Cpath d='M140 100 C120 100 104 116 104 136 L104 396 C104 406 112 414 122 414 L380 414 C390 414 398 406 398 396 L398 200 L300 200 L300 100 Z' fill='%23F7F3ED' opacity='0.15'/%3E%3Cpath d='M148 120 C132 120 120 132 120 148 L120 380 C120 388 126 394 134 394 L360 394 C368 394 374 388 374 380 L374 148 C374 132 362 120 346 120 Z' fill='none' stroke='%23F7F3ED' stroke-width='12'/%3E%3Cpath d='M148 120 L148 394' stroke='%23A84332' stroke-width='18'/%3E%3Ctext x='190' y='280' font-family='Georgia,serif' font-size='100' fill='%23F7F3ED' font-weight='bold'%3EB%3C/text%3E%3C/svg%3E">
+<!-- Same artwork, used as the actual browser-tab favicon -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231C1A17'/%3E%3Cpath d='M140 100 C120 100 104 116 104 136 L104 396 C104 406 112 414 122 414 L380 414 C390 414 398 406 398 396 L398 200 L300 200 L300 100 Z' fill='%23F7F3ED' opacity='0.15'/%3E%3Cpath d='M148 120 C132 120 120 132 120 148 L120 380 C120 388 126 394 134 394 L360 394 C368 394 374 388 374 380 L374 148 C374 132 362 120 346 120 Z' fill='none' stroke='%23F7F3ED' stroke-width='12'/%3E%3Cpath d='M148 120 L148 394' stroke='%23A84332' stroke-width='18'/%3E%3Ctext x='190' y='280' font-family='Georgia,serif' font-size='100' fill='%23F7F3ED' font-weight='bold'%3EB%3C/text%3E%3C/svg%3E">
+<title>Bookshelf — Personal Library</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Styles, split by concern instead of one giant <style> block.
+     Order matters: variables first, responsive.css last so it can override. -->
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/library.css">
+<link rel="stylesheet" href="css/modals.css">
+<link rel="stylesheet" href="css/forms.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+<!-- Auth gate: shown until a signed-in Supabase session is confirmed.
+     auth.js's initAuth() hides this and reveals #sidebar/#main once ready. -->
+<div id="auth-gate" style="display:flex;position:fixed;inset:0;background:var(--cream);z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div style="width:380px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px 28px;box-shadow:var(--shadow-hover)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-family:'Lora',serif;font-size:24px;font-weight:600;margin-bottom:4px">Book<span style="color:var(--rust)">shelf</span></div>
+      <div style="font-size:12px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:0.5px">Personal Library</div>
+    </div>
+    <div id="auth-title" style="font-family:'Lora',serif;font-size:16px;font-weight:600;margin-bottom:16px;text-align:center">Sign In</div>
+    <div id="auth-error" style="display:none;background:var(--rust-light);color:var(--rust);font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:14px"></div>
+    <div id="auth-info" style="display:none;background:var(--sage-light);color:var(--sage);font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:14px"></div>
+    <form id="auth-form" data-mode="signin" onsubmit="handleAuthSubmit(event)">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="auth-email" class="form-input" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="auth-password" class="form-input" required autocomplete="current-password" minlength="6">
+      </div>
+      <div id="auth-forgot-link" style="text-align:right;margin:-6px 0 10px"><a href="#" onclick="showForgotPassword();return false;" style="font-size:12px">Forgot password?</a></div>
+      <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width:100%;justify-content:center;margin-top:6px">Sign In</button>
+      <div style="text-align:center;font-size:13px;margin-top:14px"><a href="#" onclick="showOtpPanel();return false;">Email me a sign-in link or code instead</a></div>
+    </form>
+    <form id="auth-otp-form" style="display:none" onsubmit="handleOtpVerify(event)">
+      <div id="auth-otp-step1">
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:12px;line-height:1.5">No password needed. Enter your email and we'll send a sign-in link (and a 6-digit code).</div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="auth-otp-email" class="form-input" autocomplete="email">
+        </div>
+        <button type="button" class="btn btn-primary" id="auth-otp-send-btn" onclick="handleOtpSend()" style="width:100%;justify-content:center;margin-top:6px">Email me a sign-in link</button>
+      </div>
+      <div id="auth-otp-step2" style="display:none">
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:12px;line-height:1.5">Sent to <strong id="auth-otp-sent-to"></strong>. Open the email on this device and click the link, or enter the 6-digit code from it.</div>
+        <div class="form-group">
+          <label class="form-label">6-digit code</label>
+          <input type="text" id="auth-otp-code" class="form-input" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" style="letter-spacing:4px;text-align:center;font-size:16px">
+        </div>
+        <button type="submit" class="btn btn-primary" id="auth-otp-verify-btn" style="width:100%;justify-content:center;margin-top:6px">Sign In</button>
+        <div style="text-align:center;font-size:12px;margin-top:10px"><a href="#" onclick="document.getElementById('auth-otp-step1').style.display='';document.getElementById('auth-otp-step2').style.display='none';return false;">Send again / change email</a></div>
+      </div>
+      <div style="text-align:center;font-size:13px;margin-top:16px"><a href="#" onclick="showAuthPanel('main');return false;">Back to password sign in</a></div>
+    </form>
+    <form id="auth-forgot-form" style="display:none" onsubmit="handleForgotSubmit(event)">
+      <div style="font-size:12px;color:var(--ink-muted);margin-bottom:12px;line-height:1.5">Enter your account email and we'll send you a link to choose a new password.</div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="auth-forgot-email" class="form-input" required autocomplete="email">
+      </div>
+      <button type="submit" class="btn btn-primary" id="auth-forgot-btn" style="width:100%;justify-content:center;margin-top:6px">Send Reset Link</button>
+      <div style="text-align:center;font-size:13px;margin-top:16px"><a href="#" onclick="backToSignIn();return false;">Back to sign in</a></div>
+    </form>
+    <form id="auth-newpw-form" style="display:none" onsubmit="handleNewPasswordSubmit(event)">
+      <div class="form-group">
+        <label class="form-label">New password</label>
+        <input type="password" id="auth-newpw" class="form-input" required autocomplete="new-password" minlength="6">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm new password</label>
+        <input type="password" id="auth-newpw2" class="form-input" required autocomplete="new-password" minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary" id="auth-newpw-btn" style="width:100%;justify-content:center;margin-top:6px">Save New Password</button>
+    </form>
+    <form id="auth-mfa-form" style="display:none" onsubmit="handleMfaSubmit(event)">
+      <div style="font-size:12px;color:var(--ink-muted);margin-bottom:12px;line-height:1.5">Open your authenticator app and enter the 6-digit code shown for Bookshelf.</div>
+      <div class="form-group">
+        <label class="form-label">6-digit code</label>
+        <input type="text" id="auth-mfa-code" class="form-input" required inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="letter-spacing:4px;text-align:center;font-size:16px">
+      </div>
+      <button type="submit" class="btn btn-primary" id="auth-mfa-btn" style="width:100%;justify-content:center;margin-top:6px">Verify</button>
+      <div style="text-align:center;font-size:13px;margin-top:16px"><a href="#" onclick="cancelMfaChallenge();return false;">Cancel and sign out</a></div>
+    </form>
+    <div id="auth-toggle-text" style="text-align:center;font-size:13px;color:var(--ink-muted);margin-top:16px">
+      New here? <a href="#" onclick="setAuthMode('signup');return false;">Create an account</a>
+    </div>
+  </div>
+</div>
+
+<div id="sidebar" style="display:none">
+  <div class="sidebar-logo">
+    <h1>Book<span>shelf</span></h1>
+    <div class="sidebar-subtitle">Personal Library</div>
+  </div>
+  <div style="padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.15)">
+    <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(247,243,237,0.28);margin-bottom:6px;padding-left:2px">Library</div>
+    <div id="sidebar-quick-switch" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+    <div id="profile-bar-name" style="display:none">—</div>
+  </div>
+  <nav>
+    <div class="nav-section">Library</div>
+    <a class="nav-item active" onclick="showView('dashboard')" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+    </a>
+    <a class="nav-item" onclick="showView('library')" data-view="library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>My Books
+    </a>
+    <a class="nav-item" onclick="showView('wishlist')" data-view="wishlist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Wishlist
+    </a>
+    <a class="nav-item" onclick="showView('updates')" data-view="updates">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Updates <span id="updates-badge" style="display:none;background:var(--rust);color:white;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:4px">0</span>
+    </a>
+    <div class="nav-section">Manage</div>
+    <a class="nav-item" onclick="showView('settings')" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings
+    </a>
+  </nav>
+  <div class="sidebar-stats">
+    <div class="sidebar-stat"><span>Total books</span><strong id="stat-total">0</strong></div>
+    <div class="sidebar-stat"><span>Read</span><strong id="stat-read">0</strong></div>
+    <div class="sidebar-stat"><span>Unread</span><strong id="stat-unread">0</strong></div>
+    <div class="sidebar-stat"><span>Wishlist</span><strong id="stat-wish">0</strong></div>
+  </div>
+</div>
+
+<div id="main" style="display:none">
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <button class="btn btn-primary" onclick="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Book
+    </button>
+    <div id="account-menu-wrap" class="account-menu-wrap">
+      <button id="account-avatar" class="account-avatar" onclick="toggleAccountMenu(event)" aria-haspopup="true" aria-expanded="false" title="Account">?</button>
+      <div id="account-dropdown" class="account-dropdown" role="menu"></div>
+    </div>
+  </div>
+
+  <div id="backup-banner" style="display:none;background:linear-gradient(135deg,#92400E,#78350F);color:white;padding:10px 26px;align-items:center;gap:12px;flex-wrap:wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.85"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span id="backup-banner-msg" style="flex:1;font-size:13px;font-weight:500"></span>
+    <button onclick="backupNow()" style="padding:6px 14px;background:var(--surface);color:#92400E;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif">Backup Now</button>
+    <button onclick="snoozeBackup()" style="padding:6px 12px;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:7px;font-size:12px;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif">Remind me later</button>
+    <button onclick="dismissBackupBanner()" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.6);padding:2px;line-height:1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div id="admin-view-banner" style="display:none;background:linear-gradient(135deg,#4A6741,#2F4229);color:white;padding:10px 26px;align-items:center;gap:12px;flex-wrap:wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.85"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span id="admin-view-msg" style="flex:1;font-size:13px;font-weight:500"></span>
+    <button onclick="exitAdminView()" style="padding:6px 14px;background:var(--surface);color:#2F4229;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif">Exit Admin View</button>
+  </div>
+
+  <div class="content">
+
+    <div class="view active" id="view-dashboard">
+      <div class="dash-stats">
+        <div class="stat-card accent-rust"><div class="stat-label">Total Books</div><div class="stat-value" id="d-total">0</div><div class="stat-sub">in your library</div></div>
+        <div class="stat-card accent-sage"><div class="stat-label">Books Read</div><div class="stat-value" id="d-read">0</div><div class="stat-sub" id="d-read-pct">—</div></div>
+        <div class="stat-card accent-gold"><div class="stat-label">Pages (est.)</div><div class="stat-value" id="d-pages">0</div><div class="stat-sub">across all books</div></div>
+        <div class="stat-card accent-ink"><div class="stat-label">Avg. Rating</div><div class="stat-value" id="d-rating">—</div><div class="stat-sub">out of 5 stars</div></div>
+      </div>
+      <div class="panel" id="goal-panel" style="margin-bottom:16px;display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+          <div style="font-family:'Lora',serif;font-size:13px;font-weight:600" id="goal-title">Reading Goal</div>
+          <a onclick="openGoalModal()" style="font-size:12px;color:var(--rust);cursor:pointer">Edit Goal</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="genre-bar-track" style="flex:1;height:10px"><div class="genre-bar-fill sage" id="goal-bar-fill" style="width:0%"></div></div>
+          <div style="font-size:12px;color:var(--ink-muted);white-space:nowrap" id="goal-count-text">0 / 0</div>
+        </div>
+      </div>
+      <div id="queue-panel" class="panel" style="display:none;margin-bottom:16px">
+        <div class="panel-title">📚 Read-Next Queue</div>
+        <div id="queue-list"></div>
+      </div>
+      <div id="currently-reading-panel" style="display:none;margin-bottom:16px">
+        <div class="panel-title" style="margin-bottom:10px">Currently Reading</div>
+        <div id="currently-reading-list" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px"></div>
+      </div>
+      <div class="dash-search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="dash-search-input" placeholder="Search your entire library by title, author, ISBN, subject…" oninput="renderDashboardSearch()">
+      </div>
+      <div id="dash-search-results" style="display:none;margin-bottom:18px"></div>
+      <div class="dash-grid">
+        <div class="panel">
+          <div class="panel-title">Recently Added <a onclick="showView('library')">View all →</a></div>
+          <div class="recent-list" id="recent-list"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div class="panel"><div class="panel-title">By Genre</div><div id="genre-chart"></div></div>
+          <div class="panel"><div class="panel-title">By Age Range</div><div id="age-chart"></div></div>
+          <div class="panel"><div class="panel-title" id="year-review-title">This Year</div><div id="year-review-chart"></div></div>
+          <div class="panel" id="series-gaps-panel" style="display:none"><div class="panel-title">Incomplete Series</div><div id="series-gaps-list"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="view-library">
+      <div class="filters-bar">
+        <div class="lib-search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="lib-search-input" placeholder="Search…" oninput="applyFilters();updateSearchClear()">
+          <button id="lib-search-clear" onclick="clearLibSearch()" title="Clear search" style="display:none;background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:0;line-height:1;flex-shrink:0" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--ink-faint)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <select class="filter-select" id="filter-genre" onchange="applyFilters()"><option value="">All Genres</option></select>
+        <select class="filter-select" id="filter-subgenre" onchange="applyFilters()"><option value="">All Subgenres</option></select>
+        <select class="filter-select" id="filter-age" onchange="applyFilters()">
+          <option value="">All Ages</option>
+          <option>Pre-K (Ages 0–4)</option>
+          <option>Early Reader (Ages 5–8)</option>
+          <option>Middle Grade (Ages 8–12)</option>
+          <option>Young Adult (Ages 13–17)</option>
+          <option>Adult (18+)</option>
+          <option value="__custom__">Custom / Other</option>
+        </select>
+        <select class="filter-select" id="filter-status" onchange="applyFilters()">
+          <option value="">All Status</option><option>Unread</option><option>Reading</option><option>Read</option>
+        </select>
+        <select class="filter-select" id="filter-condition" onchange="applyFilters()">
+          <option value="">All Conditions</option><option>Good</option><option>Okay</option><option>Rough</option>
+        </select>
+        <select class="filter-select" id="filter-series" onchange="applyFilters()"><option value="">All Series</option></select>
+        <select class="filter-select" id="filter-tag" onchange="applyFilters()"><option value="">All Tags</option></select>
+        <select class="filter-select" id="filter-special" onchange="applyFilters()">
+          <option value="">Everything</option><option value="queue">📚 Read-Next Queue</option><option value="loaned">🤝 Loaned Out</option><option value="reading">📖 Currently Reading</option>
+        </select>
+        <button class="btn btn-secondary" onclick="pickRandomBook()" title="Pick a random unread book from the current filters" style="padding:7px 11px;font-size:12px">🎲 Pick for me</button>
+        <select class="filter-select" id="filter-sort" onchange="applyFilters()">
+          <option value="added-desc">Newest First</option><option value="added-asc">Oldest First</option>
+          <option value="title-asc">Title A–Z</option><option value="author-asc">Author A–Z</option>
+          <option value="rating-desc">Highest Rated</option><option value="series-asc">Series Order</option><option value="queue">Queue Order</option>
+        </select>
+        <button class="btn-clear-filters" id="btn-clear-filters" onclick="clearAllFilters()" title="Reset all filters" style="display:none;padding:7px 11px;background:var(--rust-light);color:var(--rust);border:1.5px solid var(--rust-mid);border-radius:8px;cursor:pointer;font-size:12px;font-family:DM Sans,sans-serif;font-weight:500;white-space:nowrap;transition:all 0.15s" onmouseover="this.style.background='var(--rust-mid)';this.style.color='white'" onmouseout="this.style.background='var(--rust-light)';this.style.color='var(--rust)'">
+          ✕ Clear Filters
+        </button>
+        <button class="btn btn-secondary" onclick="exportCsvFiltered()" title="Download the books currently shown as a spreadsheet" style="padding:7px 11px;font-size:12px">⬇ CSV</button>
+        <div class="view-toggle">
+          <button class="view-btn active" id="btn-grid" onclick="setDisplayMode('grid')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="view-btn" id="btn-list" onclick="setDisplayMode('list')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="library-container"></div>
+    </div>
+
+    <div class="view" id="view-wishlist"><div id="wishlist-container"></div></div>
+    <div class="view" id="view-updates">
+      <div id="updates-container"></div>
+    </div>
+
+    <div class="view" id="view-settings">
+      <div class="settings-tabs" id="settings-tabs">
+        <button class="settings-tab active" data-tab="account" onclick="showSettingsTab('account')">Account</button>
+        <button class="settings-tab" data-tab="data" onclick="showSettingsTab('data')">Library &amp; Data</button>
+        <button class="settings-tab" data-tab="advanced" onclick="showSettingsTab('advanced')">Advanced</button>
+      </div>
+      <div class="settings-section" data-settings-tab="account">
+        <div class="settings-title">Account</div>
+        <div class="settings-row"><span class="settings-key">Signed in as</span><span class="settings-val" id="cfg-account-email">—</span></div>
+        <div class="settings-row"><span class="settings-key">Password</span><button class="btn btn-secondary" onclick="openPasswordModal()">Change Password</button></div>
+        <div class="settings-row">
+          <div><span class="settings-key">Two-factor authentication</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Status: <strong id="cfg-mfa-status">…</strong></div></div>
+          <button class="btn btn-secondary" id="cfg-mfa-btn">…</button>
+        </div>
+        <div class="settings-row"><span class="settings-key">Sign out</span><button class="btn btn-secondary" onclick="signOut()">Sign Out</button></div>
+      </div>
+      <div class="settings-section" id="admin-settings-section" style="display:none" data-settings-tab="account">
+        <div class="settings-title">Admin</div>
+        <div class="settings-row">
+          <div><span class="settings-key">Browse every family member's library</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">View or manage anyone's books, as them</div></div>
+          <button class="btn btn-secondary" onclick="openAdminBrowseModal()">Browse All Libraries</button>
+        </div>
+      </div>
+      <div class="settings-section" data-settings-tab="account">
+        <div class="settings-title">Appearance</div>
+        <div class="settings-row"><span class="settings-key">Theme (this device)</span>
+          <select id="cfg-theme" class="filter-select" onchange="setThemePref(this.value)">
+            <option value="auto">Match my device</option><option value="light">Light</option><option value="dark">Dark</option>
+          </select></div>
+      </div>
+      <div class="settings-section" data-settings-tab="advanced">
+        <div class="settings-title">Connection</div>
+        <div style="font-size:12px;color:var(--ink-muted);margin-bottom:10px">Books not showing up in Supabase? Run the check — it reports the exact error Supabase gives.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="runDiagnostics()">Check connection</button>
+          <button class="btn btn-secondary" onclick="syncEverythingNow()">Sync everything now</button>
+          <button class="btn btn-secondary" onclick="dgCreateLibrary()">Create library</button>
+        </div>
+        <div id="cfg-diag-output" style="display:none;margin-top:12px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--cream)"></div>
+      </div>
+      <div class="settings-section" data-settings-tab="data">
+        <div class="settings-title">Cover Storage</div>
+        <div class="settings-row"><span class="settings-key" id="cfg-cover-status">—</span>
+          <button class="btn btn-secondary" id="cfg-cover-btn" onclick="migrateAllCovers()" style="display:none">Save all covers permanently</button></div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:6px">New covers are saved automatically. This copies older web-linked covers into your own storage so they never break.</div>
+      </div>
+      <div class="settings-section" data-settings-tab="data">
+        <div class="settings-title">Library Stats</div>
+        <div class="settings-row"><span class="settings-key">Active library</span><span class="settings-val" id="cfg-profile">—</span></div>
+        <div class="settings-row"><span class="settings-key">All libraries</span><span class="settings-val" id="cfg-profile-count">—</span></div>
+        <div class="settings-row"><span class="settings-key">Total books</span><span class="settings-val" id="cfg-total">0</span></div>
+        <div class="settings-row"><span class="settings-key">Storage used</span><span class="settings-val" id="cfg-storage">—</span></div>
+        <div class="settings-row"><span class="settings-key">Data stored in</span><span class="settings-val">Supabase (synced across your devices)</span></div>
+        <div class="settings-row"><span class="settings-key">Switch or manage libraries</span><button class="btn btn-secondary" onclick="openProfileModal()">Manage Libraries</button></div>
+      </div>
+      <div class="settings-section" data-settings-tab="data">
+        <div class="settings-title">Data Management</div>
+        <div class="settings-row">
+          <div><span class="settings-key">Backup to Google Drive</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px" id="cfg-last-backup">Last backup: never</div></div>
+          <button class="btn btn-primary" onclick="backupNow()" style="white-space:nowrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup Now</button>
+        </div>
+        <div class="settings-row"><span class="settings-key">Reminder frequency</span><select id="backup-freq-sel" class="filter-select" onchange="saveBackupFreq()" style="font-size:12px"><option value="7">Weekly</option><option value="14">Bi-weekly</option><option value="30">Monthly</option><option value="0">Never</option></select></div>
+        <div class="settings-row"><div><span class="settings-key">Export to spreadsheet (CSV)</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Opens in Excel, Numbers, Google Sheets</div></div><button class="btn btn-secondary" onclick="exportCsvAll()">Export CSV</button></div>
+        <div class="settings-row"><div><span class="settings-key">Import from CSV</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Works with this app's export or a Goodreads library export</div></div><label class="btn btn-secondary" style="cursor:pointer">Import CSV<input type="file" accept=".csv,text/csv" onchange="importCsv(event)" style="display:none"></label></div>
+        <div class="settings-row"><div><span class="settings-key">Check a backup file</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">See whether everything in a JSON or CSV backup is in your library, and add what's missing</div></div><label class="btn btn-secondary" style="cursor:pointer">Choose file<input type="file" accept=".json,.csv,application/json,text/csv" onchange="checkBackupFile(event)" style="display:none"></label></div>
+        <div class="settings-row"><span class="settings-key">Export library as JSON only</span><button class="btn btn-secondary" onclick="exportData()">Export</button></div>
+        <div class="settings-row"><span class="settings-key">Import from JSON backup</span><label class="btn btn-secondary" style="cursor:pointer">Import<input type="file" accept=".json" onchange="importData(event)" style="display:none"></label></div>
+        <div class="settings-row"><div><span class="settings-key">Find duplicates</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px" id="cfg-dup-status">—</div></div><button class="btn btn-secondary" onclick="openDupCleanup()">Review &amp; merge</button></div>
+        <div class="settings-row"><span class="settings-key">Clear all data</span><button class="btn btn-danger" onclick="clearAllData()">Clear Library</button></div>
+      </div>
+      <div class="settings-section" data-settings-tab="advanced">
+        <div class="settings-title">Automatic Updates</div>
+        <div class="settings-row">
+          <div><span class="settings-key">Scan books for updated info</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px" id="cfg-last-scan">Last scan: never</div></div>
+          <button class="btn btn-secondary" onclick="runUpdateScan(true)" id="scan-now-btn" style="white-space:nowrap">Scan Now</button>
+        </div>
+        <div class="settings-row"><span class="settings-key">Scan frequency</span><select id="scan-freq-sel" class="filter-select" onchange="saveScanFreq()" style="font-size:12px"><option value="7">Weekly</option><option value="14">Bi-weekly</option><option value="30">Monthly</option><option value="0">Never</option></select></div>
+        <div class="settings-row"><span class="settings-key">Fields to check</span><span class="settings-val" style="font-size:11px;color:var(--ink-muted)">Series, age range, grade, summary, genre</span></div>
+      </div>
+      <div class="settings-section" data-settings-tab="data">
+        <div class="settings-title">Shared Catalog</div>
+        <div style="font-size:12px;color:var(--ink-muted);line-height:1.5;margin-bottom:8px">Everyone using this Bookshelf shares what's known about each book (series, genre, age range, grade, Lexile, summary, cover). Your ratings, notes, shelves and reading history are never shared.</div>
+        <div class="settings-row"><span class="settings-key">Status</span><span class="settings-val" id="cat-status" style="font-size:12px;text-align:right">—</span></div>
+        <div class="settings-row"><span class="settings-key">Share facts about my books automatically</span><select id="cat-contrib-sel" class="filter-select" onchange="saveCatalogContribPref()" style="font-size:12px"><option value="on">On</option><option value="off">Off</option></select></div>
+        <div class="settings-row"><div><span class="settings-key">Share my existing books</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">One-time: adds your current library's book facts to the catalog (blanks only)</div></div><button class="btn btn-secondary" onclick="catalogShareMyBooks(false)">Share</button></div>
+        <div class="settings-row"><div><span class="settings-key">Check for suggestions</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Compares your books with the catalog; review on the Updates tab</div></div><button class="btn btn-secondary" onclick="runCatalogScan(true)">Check</button></div>
+        <div class="settings-row" id="cat-admin-row" style="display:none"><div><span class="settings-key">Admin: replace catalog entries with mine</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Use to correct wrong catalog data</div></div><button class="btn btn-danger" onclick="catalogShareMyBooks(true)">Replace</button></div>
+      </div>
+      <div class="settings-section" data-settings-tab="data">
+        <div class="settings-title">Quick Entry</div>
+        <div class="settings-row">
+          <div><span class="settings-key">Bulk Add Books</span><div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Enter many books at once in a spreadsheet-style table</div></div>
+          <button class="btn btn-primary" onclick="openBulkAdd()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Bulk Add
+          </button>
+        </div>
+      </div>
+      <div class="settings-section" data-settings-tab="advanced">
+        <div class="settings-title">About</div>
+        <div class="settings-row"><span class="settings-key">App</span><span class="settings-val">Bookshelf v2.0</span></div>
+        <div class="settings-row"><span class="settings-key">Book data &amp; summaries</span><span class="settings-val">Open Library API (free)</span></div>
+        <div class="settings-row"><span class="settings-key">Covers</span><span class="settings-val">Open Library Covers (free)</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-cover" id="dm-cover">
+        <div class="modal-cover-spine" id="dm-spine"></div>
+        <span id="dm-emoji" style="position:relative;z-index:1"></span>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="modal-title" id="dm-title"></div>
+        <div id="dm-subtitle" style="font-size:13px;color:var(--ink-muted);font-style:italic;margin-bottom:3px;display:none"></div>
+        <div class="modal-author" id="dm-author"></div>
+        <div class="modal-tags" id="dm-tags"></div>
+      </div>
+      <button onclick="closeDetailModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px;flex-shrink:0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="dm-loan-wrap" style="display:none;margin-bottom:14px;background:var(--gold-light);color:var(--gold);border-radius:8px;padding:10px 14px;align-items:center;justify-content:space-between;gap:10px">
+        <span id="dm-loan-text" style="font-size:13px;font-weight:500"></span>
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onclick="markReturned()">Mark Returned</button>
+      </div>
+      <div class="modal-grid" id="dm-meta"></div>
+      <div id="dm-tags-wrap" style="display:none;margin-bottom:14px">
+        <div class="desc-label">Tags</div><div id="dm-tags-chips"></div>
+      </div>
+      <div id="dm-subjects-wrap" style="display:none;margin-bottom:14px">
+        <div class="desc-label">Subjects / Keywords</div><div id="dm-subjects"></div>
+      </div>
+      <div id="dm-desc-wrap" style="display:none;margin-bottom:14px">
+        <div class="desc-label">Summary</div><div class="desc-text" id="dm-desc"></div>
+      </div>
+      <div id="dm-notes-wrap" style="display:none">
+        <div class="desc-label">My Notes</div>
+        <div id="dm-notes" style="font-size:13px;color:var(--ink);line-height:1.6"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="editCurrentBook()">Edit Book</button>
+      <button class="btn btn-secondary" id="dm-status-btn" onclick="cycleStatus()">Mark as Read</button>
+      <button class="btn" id="dm-add-library-btn" onclick="addToLibrary(viewingId)" style="display:none;background:var(--sage);color:white">✓ Add to Library</button>
+      <button class="btn btn-secondary" id="dm-queue-btn" onclick="toggleQueue(viewingId)">📚 Add to queue</button>
+      <button class="btn btn-danger" style="margin-left:auto" onclick="deleteCurrentBook()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="form-modal">
+  <div class="modal" style="width:720px">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Lora',serif;font-size:16px;font-weight:600" id="form-modal-title">Add New Book</div>
+      <button onclick="requestCloseFormModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="form-tabs">
+      <div class="form-tab active" id="tab-btn-info" onclick="switchTab('info')">Basic Info</div>
+      <div class="form-tab" id="tab-btn-details" onclick="switchTab('details')">Details &amp; Status</div>
+      <div class="form-tab" id="tab-btn-cover" onclick="switchTab('cover')">Book Cover</div>
+      <div class="form-tab" id="tab-btn-notes" onclick="switchTab('notes')">Personal Notes</div>
+    </div>
+    <form id="book-form" onsubmit="handleFormSubmit(event)" style="padding:0 24px 20px">
+      <div class="form-tab-panel active" id="tab-info">
+        <div class="form-group">
+          <label class="form-label">ISBN-13, ISBN-10, or Book Title <small>(auto-fills all fields — ISBN gives the best results)</small></label>
+          <div class="isbn-row">
+            <button type="button" class="btn btn-secondary" onclick="scanIntoForm()" title="Scan the barcode with your camera" style="padding:7px 10px;flex-shrink:0">📷</button>
+            <input type="text" id="f-isbn" class="form-input" placeholder="e.g. 9780061120084  or  The Lightning Thief" onkeydown="if(event.key==='Enter'){event.preventDefault();lookupISBN();}">
+            <button type="button" class="lookup-btn" id="lookup-btn" onclick="lookupISBN()">Auto-Fill</button>
+          </div>
+          <div class="lookup-status" id="lookup-status"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Book Title *</label><input type="text" id="f-title" class="form-input" required onblur="applyTitleCase()"></div>
+          <div class="form-group"><label class="form-label">Primary Author *</label><input type="text" id="f-author" class="form-input" required></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subtitle <small>(edition info, full title extension, etc.)</small></label>
+          <input type="text" id="f-subtitle" class="form-input" placeholder="e.g. The Complete &amp; Unabridged Edition">
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label class="form-label">Genre</label><select id="f-genre" class="form-select" onchange="updateSubgenreOptions()"><option value="">Select genre…</option></select></div>
+          <div class="form-group"><label class="form-label">Subgenre</label>
+            <select id="f-subgenre-sel" class="form-select" onchange="handleSubgenreChange()"><option value="">Select subgenre…</option></select>
+            <input type="text" id="f-subgenre-other" class="form-input" placeholder="Describe subgenre…" style="display:none;margin-top:5px" oninput="document.getElementById('f-subgenre').value=this.value">
+            <input type="hidden" id="f-subgenre">
+          </div>
+          <div class="form-group"><label class="form-label">Publish Year</label><input type="number" id="f-year" class="form-input" placeholder="e.g. 1997"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subjects / Keywords <small>(auto-filled from API, comma-separated)</small></label>
+          <input type="text" id="f-subjects" class="form-input" placeholder="e.g. magic, adventure, classics">
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Series Name</label><input type="text" id="f-series" class="form-input" placeholder="e.g. Harry Potter"></div>
+          <div class="form-group"><label class="form-label">Book # in Series</label><input type="number" id="f-series-num" class="form-input" placeholder="e.g. 1" min="0" step="0.5"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:-8px;margin-bottom:10px;flex-wrap:wrap">
+          <button type="button" id="find-series-btn" onclick="findSeriesInfo()" class="btn btn-secondary" style="font-size:12px;padding:6px 12px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Find Series
+          </button>
+          <button type="button" id="copy-series-btn" onclick="openCopyFromBook()" class="btn btn-secondary" style="font-size:12px;padding:6px 12px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy from Book
+          </button>
+          <span id="find-series-status" style="font-size:12px;color:var(--ink-faint)"></span>
+        </div>
+        <!-- Copy-from picker (hidden until triggered) -->
+        <div id="copy-from-panel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:500;color:var(--ink)">Copy shared info from:</div>
+            <button type="button" onclick="closeCopyFromBook()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:2px;line-height:1"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <div id="copy-from-list" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto"></div>
+          <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+            <div style="font-size:11px;color:var(--ink-faint);margin-bottom:6px">Fields to copy:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px" id="copy-fields-group">
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-author" checked> Author</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-genre" checked> Genre</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-series" checked> Series</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-publisher" checked> Publisher</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-age" checked> Age Range</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-language" checked> Language</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-format"> Format</label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="checkbox" id="cp-location"> Shelf Location</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-tab-panel" id="tab-details">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Age Range</label>
+            <select id="f-age-sel" class="form-select" onchange="handleAgeChange()">
+              <option value="">Select age range…</option>
+              <option>Pre-K (Ages 0–4)</option>
+              <option>Early Reader (Ages 5–8)</option>
+              <option>Middle Grade (Ages 8–12)</option>
+              <option>Young Adult (Ages 13–17)</option>
+              <option>Adult (18+)</option>
+              <option value="__other__">Other…</option>
+            </select>
+            <input type="text" id="f-age-other" class="form-input" placeholder="Describe age range…" style="display:none;margin-top:5px" oninput="document.getElementById('f-age').value=this.value">
+            <input type="hidden" id="f-age">
+          </div>
+          <div class="form-group"><label class="form-label">Grade Level</label><input type="text" id="f-grade" class="form-input" placeholder="e.g. Grades 3–5"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Lexile Level <small>(e.g. 720L, AD650L, BR120L)</small></label><input type="text" id="f-lexile" class="form-input" placeholder="e.g. 720L" maxlength="12" autocomplete="off"></div>
+          <div></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Reading Status</label>
+            <select id="f-status" class="form-select">
+              <option>Unread</option><option>Reading</option><option>Read</option><option>Wishlist</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Condition</label>
+            <div class="pill-group" id="f-condition-group">
+              <button type="button" class="pill-btn" data-value="" onclick="setPill('condition','')">Any</button>
+              <button type="button" class="pill-btn" data-value="Good" onclick="setPill('condition','Good')">Good</button>
+              <button type="button" class="pill-btn" data-value="Okay" onclick="setPill('condition','Okay')">Okay</button>
+              <button type="button" class="pill-btn" data-value="Rough" onclick="setPill('condition','Rough')">Rough</button>
+            </div>
+            <input type="hidden" id="f-condition" value="">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Format</label>
+            <div class="pill-group" id="f-format-group">
+              <button type="button" class="pill-btn" data-value="" onclick="setPill('format','')">Any</button>
+              <button type="button" class="pill-btn" data-value="Hardcover" onclick="setPill('format','Hardcover')">Hardcover</button>
+              <button type="button" class="pill-btn" data-value="Paperback" onclick="setPill('format','Paperback')">Paperback</button>
+              <button type="button" class="pill-btn" data-value="eBook" onclick="setPill('format','eBook')">eBook</button>
+              <button type="button" class="pill-btn" data-value="Audiobook" onclick="setPill('format','Audiobook')">Audiobook</button>
+              <button type="button" class="pill-btn" data-value="Other" onclick="setPill('format','Other')">Other</button>
+            </div>
+            <input type="hidden" id="f-format" value="">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Date Started</label><input type="date" id="f-start-date" class="form-input"></div>
+          <div class="form-group"><label class="form-label">Date Finished</label><input type="date" id="f-finish-date" class="form-input"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tags <small>(comma-separated, e.g. "book club, gift")</small></label><input type="text" id="f-tags" class="form-input" placeholder="e.g. favorites, beach read"></div>
+          <div class="form-group">
+            <label class="form-label">Reading Queue</label>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:8px 0;font-size:13px;color:var(--ink-muted)">
+              <input type="checkbox" id="f-queued" style="width:16px;height:16px"> Add to "read next" queue
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Loaned To <small>(leave blank if not loaned out)</small></label><input type="text" id="f-loaned-to" class="form-input" placeholder="e.g. Sarah"></div>
+          <div class="form-group"><label class="form-label">Loaned On</label><input type="date" id="f-loaned-date" class="form-input"></div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group"><label class="form-label">Page Count</label><input type="number" id="f-pages" class="form-input" min="0"></div>
+          <div class="form-group"><label class="form-label">Quantity</label><input type="number" id="f-quantity" class="form-input" value="1" min="1" max="999"></div>
+          <div class="form-group"><label class="form-label">Location / Shelf</label><input type="text" id="f-location" class="form-input" placeholder="e.g. Living Room Row B"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Publisher</label><input type="text" id="f-publisher" class="form-input"></div>
+          <div class="form-group"><label class="form-label">Language</label><input type="text" id="f-language" class="form-input" value="English"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">My Star Rating</label>
+          <div class="star-row" id="star-row">
+            <span class="star" onclick="setFormRating(1)">★</span><span class="star" onclick="setFormRating(2)">★</span>
+            <span class="star" onclick="setFormRating(3)">★</span><span class="star" onclick="setFormRating(4)">★</span>
+            <span class="star" onclick="setFormRating(5)">★</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-tab-panel" id="tab-cover">
+        <div class="form-group">
+          <label class="form-label">Cover Image URL <small>(Auto-filled or manual link)</small></label>
+          <input type="text" id="f-cover-url" class="form-input" placeholder="https://example.com/cover.jpg" oninput="setCoverPreview(this.value)">
+        </div>
+        <div style="display:grid;grid-template-columns:110px 1fr;gap:16px;margin-top:12px">
+          <div class="modal-cover" style="width:110px;height:160px;font-size:44px" id="f-cover-preview-box">
+            <div class="modal-cover-spine"></div>
+            <span id="f-cover-preview-emoji">📖</span>
+          </div>
+          <div style="display:flex;flex-direction:column;justify-content:center;gap:10px">
+            <div class="drop-zone" id="drop-zone" onclick="triggerFileSelect()">
+              <strong>Upload image file</strong> or drag &amp; drop here
+              <div style="font-size:11px;color:var(--ink-faint);margin-top:3px">JPG, PNG, WebP up to 1.5MB (auto-compressed)</div>
+              <input type="file" id="f-cover-file" accept="image/*" onchange="handleCoverFileSelect(event)" style="display:none">
+            </div>
+            <button type="button" class="btn btn-secondary" style="align-self:flex-start" onclick="openPhotoModal()">
+              🔍 Search Web for Cover Artwork
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="form-tab-panel" id="tab-notes">
+        <div class="form-group"><label class="form-label">Book Summary / Plot Description</label><textarea id="f-desc" class="form-textarea" placeholder="Enter storyline synopsis…"></textarea></div>
+        <div class="form-group"><label class="form-label">Personal Review &amp; Reading Notes</label><textarea id="f-notes" class="form-textarea" placeholder="Add thoughts, annotations, tags, or reading history notes…"></textarea></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <button type="button" class="btn btn-secondary" onclick="requestCloseFormModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="form-submit-btn">Save Book</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="photo-modal" style="z-index:250">
+  <div class="modal" style="width:520px;box-shadow:0 24px 60px rgba(28,26,23,0.28);transform:translateY(12px);transition:transform 0.25s">
+    <div style="padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between">
+      <div><div style="font-family:'Lora',serif;font-size:16px;font-weight:600">Search for a Book</div>
+      <div style="font-size:11px;color:var(--ink-faint);margin-top:2px">Search Open Library &amp; Google Books by title, author, or ISBN</div></div>
+      <button onclick="closePhotoModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:18px 22px">
+      <div class="form-group">
+        <label class="form-label">Title, Author, or ISBN</label>
+        <div style="display:flex;gap:7px">
+          <input type="text" id="photo-search-input" class="form-input" placeholder="e.g. The Hobbit, Tolkien, 9780547928227…" onkeydown="if(event.key==='Enter')photoSearch()">
+          <button class="lookup-btn" onclick="photoSearch()" id="photo-search-btn">Search</button>
+        </div>
+        <div style="font-size:11px;color:var(--ink-faint);margin-top:5px">Searches Open Library, Google Books, and more</div>
+      </div>
+      <div id="photo-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Selector Modal -->
+<div class="modal-overlay" id="profile-modal" style="z-index:400;background:rgba(28,26,23,0.72)">
+  <div class="modal" style="width:500px;max-width:96vw;max-height:88vh">
+    <div style="padding:24px 26px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-family:'Lora',serif;font-size:20px;font-weight:600;margin-bottom:4px">Choose a Library</div>
+      <div style="font-size:13px;color:var(--ink-faint)">Each library has its own separate collection of books.</div>
+    </div>
+    <div style="padding:18px 26px;max-height:52vh;overflow-y:auto" id="profile-list"></div>
+    <div style="padding:14px 26px;border-top:1px solid var(--border)">
+      <div id="profile-new-row" style="display:flex;gap:8px">
+        <input type="text" id="profile-new-input" class="form-input" placeholder="New library name… (e.g. Classroom, Bedroom)" style="flex:1" onkeydown="if(event.key==='Enter')createProfile()">
+        <button class="btn btn-primary" onclick="createProfile()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Library
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Reading Goal Dialog -->
+<div class="modal-overlay" id="goal-modal" style="z-index:260">
+  <div class="modal" style="width:380px;max-width:96vw">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Lora',serif;font-size:16px;font-weight:600">Set Reading Goal</div>
+      <button onclick="closeGoalModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form onsubmit="handleGoalSubmit(event)" style="padding:18px 24px 20px">
+      <div class="form-group">
+        <label class="form-label">Books to read this year</label>
+        <input type="number" id="goal-target-input" class="form-input" min="1" max="999" required>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+        <button type="button" class="btn btn-secondary" onclick="closeGoalModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Goal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Admin: Browse All Libraries -->
+<div class="modal-overlay" id="admin-browse-modal" style="z-index:270">
+  <div class="modal" style="width:560px;max-width:96vw;max-height:80vh">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Lora',serif;font-size:16px;font-weight:600">All Libraries</div>
+      <button onclick="closeAdminBrowseModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:16px 24px;max-height:60vh;overflow-y:auto" id="admin-browse-list">
+      <div style="text-align:center;padding:20px;color:var(--ink-faint);font-size:13px">Loading…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Dialog -->
+<div class="modal-overlay" id="password-modal" style="z-index:260">
+  <div class="modal" style="width:420px;max-width:96vw">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Lora',serif;font-size:16px;font-weight:600">Change Password</div>
+      <button onclick="closePasswordModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form onsubmit="handlePasswordChange(event)" style="padding:18px 24px 20px">
+      <div id="password-error" style="display:none;background:var(--rust-light);color:var(--rust);font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:14px"></div>
+      <div class="form-group">
+        <label class="form-label">New password</label>
+        <input type="password" id="password-new" class="form-input" required autocomplete="new-password" minlength="6">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm new password</label>
+        <input type="password" id="password-new2" class="form-input" required autocomplete="new-password" minlength="6">
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="password-save-btn">Update Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Duplicate cleanup -->
+<div class="modal-overlay" id="dupclean-modal" style="z-index:255;align-items:flex-start;padding:20px">
+  <div class="modal" style="width:98vw;max-width:900px;max-height:90vh;display:flex;flex-direction:column">
+    <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:'Lora',serif;font-size:17px;font-weight:600">Find &amp; Merge Duplicates</div>
+        <div style="font-size:12px;color:var(--ink-faint);margin-top:2px">Pick the copy to keep. Merging fills its blanks from the others, adds up quantities, then removes the extras. Every merge can be undone.</div>
+      </div>
+      <button onclick="closeDupCleanup()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);font-size:18px">✕</button>
+    </div>
+    <div id="dupclean-body" style="padding:16px 20px;overflow:auto;flex:1"></div>
+  </div>
+</div>
+
+<!-- Backup comparison -->
+<div class="modal-overlay" id="compare-modal" style="z-index:270">
+  <div class="modal" style="width:520px;max-width:96vw">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-family:'Lora',serif;font-size:16px;font-weight:600">Backup check</div>
+    <div style="padding:16px 20px" id="compare-body"></div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="closeCompareModal()">Close</button>
+      <button class="btn btn-primary" id="compare-add-btn" onclick="addMissingFromBackup()">Add missing books</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV import preview -->
+<div class="modal-overlay" id="csv-preview-modal" style="z-index:270">
+  <div class="modal" style="width:460px;max-width:96vw">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-family:'Lora',serif;font-size:16px;font-weight:600">Import from CSV</div>
+    <div style="padding:16px 20px" id="csv-preview-body"></div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-secondary" onclick="closeCsvPreview()">Cancel</button>
+      <button class="btn btn-primary" id="csv-import-confirm" onclick="confirmCsvImport()">Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Barcode Scanner -->
+<div class="modal-overlay" id="scan-modal" style="z-index:280">
+  <div class="modal" style="width:480px;max-width:96vw">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Lora',serif;font-size:16px;font-weight:600">📷 Scan Book Barcode</div>
+      <button onclick="closeBarcodeScanner()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);font-size:18px">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <video id="scan-video" playsinline muted style="width:100%;max-height:50vh;background:#000;border-radius:10px;object-fit:cover"></video>
+      <div id="scan-status" style="font-size:12px;color:var(--ink-muted);margin-top:10px;text-align:center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Factor Setup Dialog -->
+<div class="modal-overlay" id="mfa-modal" style="z-index:260">
+  <div class="modal" style="width:440px;max-width:96vw">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Lora',serif;font-size:16px;font-weight:600">Set Up Two-Factor Authentication</div>
+      <button onclick="cancelMfaEnroll()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form onsubmit="handleMfaEnrollConfirm(event)" style="padding:18px 24px 20px">
+      <div style="font-size:12px;color:var(--ink-muted);line-height:1.6;margin-bottom:12px"><strong>1.</strong> Open an authenticator app (Google Authenticator, Authy, 1Password…) and scan this code.</div>
+      <div style="text-align:center;margin-bottom:10px"><img id="mfa-qr" alt="Two-factor QR code" style="width:180px;height:180px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px"></div>
+      <div style="font-size:11px;color:var(--ink-faint);text-align:center;margin-bottom:14px">Can't scan? Enter this key instead:<br><code id="mfa-secret" style="font-size:12px;color:var(--ink);word-break:break-all;user-select:all"></code></div>
+      <div style="font-size:12px;color:var(--ink-muted);line-height:1.6;margin-bottom:8px"><strong>2.</strong> Enter the 6-digit code it shows to finish.</div>
+      <div id="mfa-error" style="display:none;background:var(--rust-light);color:var(--rust);font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:10px"></div>
+      <input type="text" id="mfa-code" class="form-input" required inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" style="letter-spacing:4px;text-align:center;font-size:16px">
+      <div style="font-size:11px;color:var(--ink-faint);margin-top:10px;line-height:1.5">Turning this on signs you out of your other devices; you'll sign in again there with a code.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+        <button type="button" class="btn btn-secondary" onclick="cancelMfaEnroll()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="mfa-confirm-btn">Turn On</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ISBN Lookup Change Review Dialog -->
+<div class="modal-overlay" id="lookup-review-modal" style="z-index:300">
+  <div class="modal" style="width:580px;max-width:96vw">
+    <div style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between">
+      <div>
+        <div style="font-family:'Lora',serif;font-size:16px;font-weight:600">Review Lookup Changes</div>
+        <div style="font-size:12px;color:var(--ink-faint);margin-top:3px">The ISBN lookup found different values. Choose what to keep for each field.</div>
+      </div>
+      <button onclick="closeLookupReview()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:16px 24px;max-height:60vh;overflow-y:auto">
+      <div id="lookup-review-rows"></div>
+    </div>
+    <div style="padding:13px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="font-size:12px" onclick="selectAllLookup('mine')">Keep All Mine</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="selectAllLookup('new')">Use All New</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="closeLookupReview()">Cancel</button>
+        <button class="btn btn-primary" onclick="applyLookupReview()">Apply Selected</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Duplicate Book Dialog -->
+<div class="modal-overlay" id="dup-modal" style="z-index:250">
+  <div class="modal" style="width:620px;max-width:96vw">
+    <div class="modal-header" style="padding:18px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between">
+      <div style="flex:1;min-width:0">
+        <div class="modal-title" style="font-size:16px" id="dup-modal-title">Book Already in Library</div>
+        <div id="dup-modal-header-msg" style="font-size:13px;color:var(--ink-muted);margin-top:6px;line-height:1.55"></div>
+      </div>
+      <button onclick="closeDupModal()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px;flex-shrink:0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:16px 24px;max-height:58vh;overflow-y:auto">
+      <div id="dup-modal-diff-section"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;color:var(--ink-muted)">
+        <input type="checkbox" id="dup-modal-qty-cb" checked style="width:15px;height:15px">
+        <span id="dup-modal-qty-label">Also add +1 to quantity</span>
+      </label>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onclick="closeDupModal()">Cancel</button>
+        <button class="btn btn-primary" id="dup-modal-confirm" onclick="confirmDupAdd()">Apply Choices</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Add Modal -->
+<div class="modal-overlay" id="bulk-modal" style="z-index:260;align-items:flex-start;padding:20px">
+  <div class="modal" style="width:98vw;max-width:1320px;max-height:90vh;display:flex;flex-direction:column">
+    <div style="padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;flex-shrink:0">
+      <div>
+        <div style="font-family:'Lora',serif;font-size:17px;font-weight:600">Bulk Add Books</div>
+        <div style="font-size:12px;color:var(--ink-faint);margin-top:2px">Fill rows below. Press ↻ or Enter in ISBN/title to auto-fill. Empty rows are ignored.</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-secondary" style="font-size:12px" onclick="bulkScanShelf()" title="Scan barcodes one after another with your camera">📷 Scan books</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="bulkTogglePaste()">📋 Paste list</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="bulkLookupAll()">↻ Look up all</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="bulkAddRow()">+ Add Row</button>
+        <button class="btn btn-secondary" style="font-size:12px" onclick="bulkClearAll()">Clear All</button>
+        <button class="btn btn-primary" onclick="bulkSaveAll()">Save All Books</button>
+        <button onclick="requestCloseBulkAdd()" style="background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px;line-height:1">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="bulk-paste-panel" style="display:none;padding:10px 20px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="font-size:12px;color:var(--ink-muted);margin-bottom:6px">Paste ISBNs or titles — one per line (from a spreadsheet column works too). Each becomes a row and is looked up automatically.</div>
+      <textarea id="bulk-paste-text" rows="4" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font-family:DM Sans,sans-serif;font-size:12px" placeholder="9780061120084&#10;9780439708180&#10;The Lightning Thief"></textarea>
+      <div style="margin-top:6px;display:flex;gap:8px"><button class="btn btn-primary" style="font-size:12px" onclick="bulkImportPaste()">Add rows &amp; look up</button><button class="btn btn-secondary" style="font-size:12px" onclick="bulkTogglePaste()">Cancel</button></div>
+    </div>
+    <div style="overflow:auto;flex:1">
+      <table id="bulk-table" style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--cream-dark);position:sticky;top:0;z-index:2">
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;width:32px">#</th>
+            <th style="width:34px"></th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:150px">ISBN / Lookup</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:140px">Title *</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:120px">Author *</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:100px">Genre</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:100px">Series</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;width:50px">#</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:90px">Age Range</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:70px">Shelf</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:70px">Tags</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;min-width:80px">Status</th>
+            <th style="padding:8px 6px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-faint);font-weight:600;white-space:nowrap;width:45px">Qty</th>
+            <th style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="bulk-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:10px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap">
+      <span id="bulk-status" style="font-size:12px;flex:1"></span>
+      <div style="font-size:11px;color:var(--ink-faint)">
+        <kbd style="background:var(--cream-dark);border:1px solid var(--border);border-radius:3px;padding:1px 5px">Tab</kbd> between cells &nbsp;·&nbsp;
+        <kbd style="background:var(--cream-dark);border:1px solid var(--border);border-radius:3px;padding:1px 5px">Enter</kbd> in lookup field to auto-fill
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JS modules, loaded in dependency order.
+
+       [Supabase CDN]                Third-party client library (window.supabase)
+       js/supabase-config.js        YOUR project URL + anon key go here
+       js/auth.js                   Sign in/up, forgot password, 2FA prompt, #auth-gate
+       js/account.js                Settings → Account: change password, 2FA setup
+       js/db.js                     Supabase-backed persistence (per-user, per-library)
+       js/profiles.js               Library-switcher UI (multi-library support)
+       js/config.js                 Constants + top-level UI state
+       js/utils.js                  esc(), title-case, showToast()
+       js/render-helpers.js         bookCard, badges, sidebar stats
+       js/genre-fields.js           Genre/subgenre/age combo dropdowns
+       js/render-dashboard.js       Dashboard stats/charts/search
+       js/reading-stats.js          Reading goal, currently reading, year in review, series gaps
+       js/render-library.js         Filter bar + grid/table listing
+       js/wishlist.js               Wishlist cards + add/remove
+       js/settings.js               Settings view stats
+       js/autofill.js               Genre/age-inference heuristics + KNOWN_SERIES
+       js/lookup-review.js          Snapshot/diff/apply review workflow
+       js/modals.js                 Detail + form modal, cover upload
+       js/copy-from-book.js         "Copy from Book" panel
+       js/cover-search.js           Web cover-art search modal
+       js/api.js                    findSeriesInfo() + lookupISBN()
+       js/theme.js                  Light/dark theme (loaded in <head>)
+       js/barcode-scanner.js        Camera ISBN scanner
+       js/covers.js                 Copies cover images into Supabase Storage
+       js/diagnostics.js            Settings → Connection check / force sync
+       js/forms.js                  Form submit
+       js/duplicate-detection.js    "Already in library" merge modal
+       js/backup.js                 Backup reminders + JSON export
+       js/data-management.js        Plain export/import/clear (Settings)
+       js/csv.js                    CSV export + import (incl. Goodreads)
+       js/backup-compare.js         "Is everything from my backup in the app?" checker
+       js/dup-cleanup.js            Library-wide duplicate finder / merger
+       js/ui-nav.js                 Account menu + tabbed Settings
+       js/updates.js                Auto-scan for updated info
+       js/bulk-add.js               Bulk-add table
+       js/pwa.js                    Service worker + manifest registration
+       js/modal-shortcuts.js        Click-outside / Escape to close modals
+       js/main.js                   Init / view routing — loaded last
+     ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/account.js"></script>
+<script src="js/db.js"></script>
+<script src="js/profiles.js"></script>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/render-helpers.js"></script>
+<script src="js/genre-fields.js"></script>
+<script src="js/render-dashboard.js"></script>
+<script src="js/reading-stats.js"></script>
+<script src="js/render-library.js"></script>
+<script src="js/wishlist.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/autofill.js"></script>
+<script src="js/lookup-review.js"></script>
+<script src="js/modals.js"></script>
+<script src="js/copy-from-book.js"></script>
+<script src="js/cover-search.js"></script>
+<script src="js/api.js"></script>
+<script src="js/barcode-scanner.js"></script>
+<script src="js/covers.js"></script>
+<script src="js/diagnostics.js"></script>
+<script src="js/forms.js"></script>
+<script src="js/duplicate-detection.js"></script>
+<script src="js/backup.js"></script>
+<script src="js/data-management.js"></script>
+<script src="js/csv.js"></script>
+<script src="js/backup-compare.js"></script>
+<script src="js/dup-cleanup.js"></script>
+<script src="js/ui-nav.js"></script>
+<script src="js/updates.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/bulk-add.js"></script>
+<script src="js/pwa.js"></script>
+<script src="js/modal-shortcuts.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
