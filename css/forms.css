@@ -1,0 +1,144 @@
+/* ==========================================================================
+   Form controls + misc small components:
+   - #book-form inputs/tabs (inside #form-modal)
+   - toast notifications
+   - empty states
+   - #view-settings rows
+   - wishlist cards (#view-wishlist)
+   - reusable pill button group
+   ========================================================================== */
+
+/* --- Generic form fields --- */
+.form-group{margin-bottom:13px}
+.form-label{font-size:12px;font-weight:500;color:var(--ink-muted);margin-bottom:5px;display:block}
+.form-label small{font-weight:400;color:var(--ink-faint)}
+
+.form-input,.form-select,.form-textarea{
+  width:100%;padding:8px 10px;border:1px solid var(--border-strong);border-radius:8px;
+  font-size:13px;font-family:DM Sans,sans-serif;color:var(--ink);background:var(--surface);
+  outline:none;transition:border-color 0.2s,box-shadow 0.2s;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus{
+  border-color:var(--rust-mid);box-shadow:0 0 0 3px rgba(168,67,50,0.12);
+}
+.form-textarea{resize:vertical;min-height:70px;line-height:1.6}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+
+/* ISBN lookup row */
+.isbn-row{display:flex;gap:7px}
+.isbn-row .form-input{flex:1}
+.lookup-btn{
+  padding:8px 12px;background:var(--ink);color:var(--on-ink);border:none;border-radius:8px;
+  cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif;font-weight:500;
+  white-space:nowrap;transition:background 0.15s;
+}
+.lookup-btn:hover{background:var(--ink-muted)}
+.lookup-btn:disabled{opacity:0.5;cursor:not-allowed}
+.lookup-status{font-size:12px;color:var(--ink-muted);margin-top:4px;min-height:15px}
+.lookup-status.success{color:var(--sage)}
+.lookup-status.error{color:var(--rust)}
+
+/* Star rating input */
+.star-row{display:flex;gap:3px}
+.star{font-size:22px;cursor:pointer;color:var(--cream-dark);transition:color 0.1s}
+.star.active{color:var(--gold)}
+.star:hover{color:var(--gold)}
+
+/* Form modal tabs (Basic Info / Details & Status / Cover / Notes) */
+.form-tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:15px}
+.form-tab{
+  padding:8px 15px;font-size:13px;font-weight:500;color:var(--ink-muted);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;
+}
+.form-tab.active{color:var(--rust);border-bottom-color:var(--rust)}
+.form-tab-panel{display:none}
+.form-tab-panel.active{display:block}
+
+/* --- Toast notifications --- */
+.toast{
+  position:fixed;bottom:22px;right:22px;background:var(--ink);color:var(--on-ink);
+  padding:10px 17px;border-radius:10px;font-size:14px;z-index:500;
+  transform:translateY(80px);opacity:0;transition:all 0.3s;pointer-events:none;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.has-action{pointer-events:auto}
+.toast-action{margin-left:8px;background:none;border:none;color:var(--gold);font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;text-decoration:underline}
+
+/* --- Empty states --- */
+.empty-state{text-align:center;padding:48px 20px;color:var(--ink-faint)}
+.empty-state svg{width:48px;height:48px;margin-bottom:12px;opacity:0.35}
+.empty-title{font-family:'Lora',serif;font-size:18px;color:var(--ink-muted);margin-bottom:6px}
+.empty-sub{font-size:13px}
+
+/* --- Settings view --- */
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:14px}
+.settings-title{font-weight:500;font-size:14px;margin-bottom:12px;color:var(--ink)}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.settings-key{font-size:13px;color:var(--ink-muted)}
+.settings-val{font-size:13px;font-weight:500;color:var(--ink)}
+
+.drop-zone{
+  border:2px dashed var(--border-strong);border-radius:var(--radius);padding:22px 18px;
+  text-align:center;cursor:pointer;transition:all 0.2s;background:var(--surface);
+}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--rust-mid);background:var(--rust-light)}
+
+/* --- Reusable pill button group (used for quick filters/toggles) --- */
+.pill-group{display:flex;gap:6px;flex-wrap:wrap}
+.pill-btn{
+  padding:6px 14px;border-radius:20px;border:1.5px solid var(--border-strong);
+  background:var(--surface);color:var(--ink-muted);font-size:12px;font-family:DM Sans,sans-serif;
+  font-weight:500;cursor:pointer;transition:all 0.15s;
+}
+.pill-btn:hover{border-color:var(--rust-mid);color:var(--rust)}
+.pill-btn.active{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+
+.lr-option{transition:border-color 0.15s,background 0.15s}
+.lr-option:hover{filter:brightness(0.97)}
+
+/* --- Wishlist cards (#view-wishlist) --- */
+.wish-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px;display:flex;gap:12px;align-items:flex-start;transition:box-shadow 0.2s;
+}
+.wish-card:hover{box-shadow:var(--shadow-hover)}
+.wish-card-cover{
+  width:52px;height:76px;border-radius:4px;background:var(--cream-dark);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
+  border:1px solid var(--border);cursor:pointer;
+}
+.wish-card-title{
+  font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;margin-bottom:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.wish-card-title:hover{color:var(--rust)}
+.wish-card-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:stretch}
+.wish-btn-add{
+  padding:6px 12px;background:var(--sage);color:white;border:none;border-radius:7px;
+  font-size:12px;font-family:DM Sans,sans-serif;font-weight:600;cursor:pointer;
+  white-space:nowrap;transition:background 0.15s;
+}
+.wish-btn-add:hover{background:#3a5233}
+.wish-btn-edit{
+  padding:5px 10px;background:var(--surface);color:var(--ink-muted);border:1px solid var(--border-strong);
+  border-radius:7px;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;
+  transition:all 0.15s;text-align:center;
+}
+.wish-btn-edit:hover{border-color:var(--ink-muted);color:var(--ink)}
+.wish-btn-remove{
+  padding:5px 10px;background:var(--surface);color:var(--rust);border:1px solid var(--rust-light);
+  border-radius:7px;font-size:11px;font-family:DM Sans,sans-serif;cursor:pointer;
+  transition:all 0.15s;text-align:center;
+}
+.wish-btn-remove:hover{background:var(--rust-light)}
+
+/* Add/Edit book modal: header + tabs + Save bar stay put; only the fields scroll */
+#form-modal .modal{display:flex;flex-direction:column;overflow:hidden;max-height:93vh;max-height:93dvh}
+#form-modal .modal > :not(form){flex-shrink:0}
+#book-form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+#book-form .form-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;padding:2px 24px 12px;-webkit-overflow-scrolling:touch}
+#book-form .form-footer{flex-shrink:0;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 24px;padding-bottom:calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--cream)}
+@media(max-width:700px){#book-form .form-scroll{padding:2px 16px 12px}#book-form .form-footer{padding-left:16px;padding-right:16px}}
